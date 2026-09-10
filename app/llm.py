@@ -132,6 +132,7 @@ async def generate_bottle_files(
     detected_archetype = repo_summary.get("detected_archetype", "web_app")
     archetype_label = repo_summary.get("archetype_label", "Web Application")
     recommended_access = repo_summary.get("recommended_access", "public")
+    rec_paths = "public_paths = []" if recommended_access == "private" else "public_paths = [\"/\"]"
     has_examples = repo_summary.get("has_examples", False)
     example_dirs = repo_summary.get("example_dirs", [])
 
@@ -142,7 +143,7 @@ Description: {repo_summary.get('description')}
 Latest Tag / Release: {repo_summary.get('latest_tag') or 'None detected'}
 Default Branch: {repo_summary.get('default_branch', 'main')}
 Detected Archetype: {archetype_label} ({detected_archetype})
-Recommended Access Security: {recommended_access.upper()} ({'public_paths = []' if recommended_access == 'private' else 'public_paths = [\"/\"]'})
+Recommended Access Security: {recommended_access.upper()} ({rec_paths})
 Upstream Examples / Tutorials Available: {'Yes: ' + ', '.join(example_dirs) if has_examples else 'No'}
 
 Key Upstream Manifest & Documentation Files:
