@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>App Bottler — Cloud in a Bottle App Studio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdfa',
+              500: '#14b8a6',
+              600: '#0d9488',
+              700: '#0f766e',
+            },
+            darkbg: '#0f172a',
+            cardbg: '#1e293b',
+            bordercol: '#334155',
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    textarea.code-editor {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.875rem;
+      line-height: 1.4;
+      tab-size: 2;
+    }
+  </style>
+</head>
+<body class="bg-darkbg text-slate-100 min-h-screen flex flex-col font-sans selection:bg-brand-500 selection:text-white">
+
+  <!-- Header -->
+  <header class="border-b border-bordercol bg-cardbg/80 backdrop-blur sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-500 to-emerald-400 flex items-center justify-center text-darkbg font-extrabold text-xl shadow-lg shadow-teal-500/20">
+          🍾
+        </div>
+        <div>
+          <h1 class="font-bold text-lg leading-tight flex items-center gap-2">
+            App Bottler
+            <span class="text-xs font-medium px-2 py-0.5 rounded bg-teal-500/10 text-teal-400 border border-teal-500/20">OpenHost</span>
+          </h1>
+          <p class="text-xs text-slate-400">Transform any GitHub project into a Cloud in a Bottle App</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-3">
+        <!-- Status Badges -->
+        <div id="status-gh" class="hidden sm:flex items-center text-xs px-2.5 py-1 rounded-full bg-slate-800 border border-bordercol text-slate-400 gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-amber-500" id="dot-gh"></span>
+          <span id="text-gh">GitHub</span>
+        </div>
+        <div id="status-llm" class="hidden sm:flex items-center text-xs px-2.5 py-1 rounded-full bg-slate-800 border border-bordercol text-slate-400 gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-amber-500" id="dot-llm"></span>
+          <span id="text-llm">LLM</span>
+        </div>
+
+        <button onclick="switchTab('wizard')" id="tab-btn-wizard" class="text-sm font-medium px-3 py-1.5 rounded-lg bg-teal-500/10 text-teal-400 border border-teal-500/30 hover:bg-teal-500/20 transition">
+          <i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i>Bottle App
+        </button>
+        <button onclick="switchTab('projects')" id="tab-btn-projects" class="text-sm font-medium px-3 py-1.5 rounded-lg text-slate-300 hover:bg-slate-800 transition">
+          <i class="fa-solid fa-boxes-stacked mr-1.5"></i>My Apps
+        </button>
+        <button onclick="openSettingsModal()" class="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition" title="Settings">
+          <i class="fa-solid fa-gear text-lg"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- TAB 1: BOTTLE WIZARD -->
+    <section id="view-wizard" class="space-y-8">
+
+      <!-- Step 1: Input Repo -->
+      <div class="bg-cardbg border border-bordercol rounded-2xl p-6 sm:p-8 shadow-xl">
+        <div class="max-w-3xl">
+          <h2 class="text-xl font-bold text-white mb-2 flex items-center gap-2">
+            <span class="w-7 h-7 rounded-lg bg-teal-500 text-darkbg text-sm font-bold flex items-center justify-center">1</span>
+            Target GitHub Repository
+          </h2>
+          <p class="text-sm text-slate-400 mb-6">
+            Enter any public GitHub project URL or repository slug (e.g. <code class="text-teal-400 bg-slate-900 px-1.5 py-0.5 rounded">usememos/memos</code> or <code class="text-teal-400 bg-slate-900 px-1.5 py-0.5 rounded">https://github.com/louislam/uptime-kuma</code>).
+          </p>
+
+          <form id="analyze-form" onsubmit="event.preventDefault(); handleAnalyze();" class="space-y-4">
+            <div class="flex flex-col sm:flex-row gap-3">
+              <div class="relative flex-1">
+                <i class="fa-brands fa-github absolute left-3.5 top-3.5 text-slate-400 text-lg"></i>
+                <input
+                  type="text"
+                  id="repo-input"
+                  required
+                  placeholder="https://github.com/owner/repository"
+                  class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-900/90 border border-bordercol text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition"
+                />
+              </div>
+              <button
+                type="submit"
+                id="btn-analyze"
+                class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 text-darkbg font-semibold hover:opacity-95 shadow-lg shadow-teal-500/20 flex items-center justify-center gap-2 transition disabled:opacity-50"
+              >
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <span>Analyze Repo</span>
+              </button>
+            </div>
+
+            <!-- Optional customization instructions -->
+            <div>
+              <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+                Packaging Instructions (Optional)
+              </label>
+              <input
+                type="text"
+                id="custom-instructions"
+                placeholder="e.g., Use port 5230, store SQLite database in $BOTTLE_APP_DATA_DIR, skip signup screen"
+                class="w-full px-4 py-2 rounded-xl bg-slate-900/60 border border-bordercol text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-teal-500 transition"
+              />
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Step 2: Repository Analysis Card (Hidden initially) -->
+      <div id="analysis-card" class="hidden bg-cardbg border border-bordercol rounded-2xl p-6 sm:p-8 shadow-xl space-y-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-bordercol">
+          <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-xl bg-slate-800 border border-bordercol flex items-center justify-center text-teal-400 text-2xl">
+              <i class="fa-solid fa-cube"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-3">
+                <h3 id="repo-title" class="text-xl font-bold text-white">owner/repo</h3>
+                <span id="repo-stars" class="text-xs px-2.5 py-0.5 rounded-full bg-slate-800 text-amber-300 border border-bordercol flex items-center gap-1">
+                  <i class="fa-solid fa-star text-[10px]"></i> 0
+                </span>
+                <span id="repo-tag" class="text-xs px-2.5 py-0.5 rounded-full bg-teal-500/10 text-teal-400 border border-teal-500/20">
+                  latest
+                </span>
+              </div>
+              <p id="repo-desc" class="text-sm text-slate-400 mt-1">Repository description...</p>
+            </div>
+          </div>
+
+          <button
+            onclick="handleGenerate()"
+            id="btn-generate"
+            class="px-6 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-darkbg font-bold shadow-lg shadow-teal-500/25 flex items-center justify-center gap-2 transition"
+          >
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+            <span>Generate Bottle App with LLM</span>
+          </button>
+        </div>
+
+        <!-- Detected Files -->
+        <div>
+          <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Detected Upstream Assets</h4>
+          <div id="detected-files-list" class="flex flex-wrap gap-2">
+            <!-- Badges dynamically inserted -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: Generated Code & App Studio (Hidden initially) -->
+      <div id="studio-card" class="hidden bg-cardbg border border-bordercol rounded-2xl shadow-xl overflow-hidden space-y-0">
+        <!-- Studio Header -->
+        <div class="p-6 bg-slate-800/60 border-b border-bordercol flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-3">
+              <span class="w-7 h-7 rounded-lg bg-teal-500 text-darkbg text-sm font-bold flex items-center justify-center">2</span>
+              <h3 id="studio-app-title" class="text-xl font-bold text-white">Generated Bottle App</h3>
+              <span id="studio-app-slug" class="text-xs px-2.5 py-0.5 rounded bg-slate-900 text-teal-400 font-mono border border-bordercol">slug</span>
+            </div>
+            <p id="studio-app-summary" class="text-xs text-slate-400 mt-1 max-w-2xl leading-relaxed"></p>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex items-center gap-3">
+            <button
+              onclick="handlePublish()"
+              id="btn-publish"
+              class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 text-darkbg font-bold shadow-lg shadow-teal-500/20 hover:opacity-95 flex items-center gap-2 transition"
+            >
+              <i class="fa-brands fa-github"></i>
+              <span>Create GitHub Repo & Push</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Editor Toolbar & Tabs -->
+        <div class="bg-slate-900/80 px-6 py-2.5 border-b border-bordercol flex items-center justify-between overflow-x-auto">
+          <div class="flex items-center space-x-1" id="file-tabs">
+            <!-- Tabs injected dynamically -->
+          </div>
+          <div class="text-xs text-slate-500 flex items-center gap-2">
+            <i class="fa-solid fa-circle-info"></i> All files editable before publishing
+          </div>
+        </div>
+
+        <!-- Editor Content -->
+        <div class="p-6 bg-slate-950">
+          <textarea
+            id="active-file-editor"
+            oninput="handleFileContentChange(this.value)"
+            rows="22"
+            spellcheck="false"
+            class="code-editor w-full bg-transparent text-emerald-300 font-mono text-xs focus:outline-none resize-y border-none"
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- Step 4: Publish Success & Next Actions (Hidden initially) -->
+      <div id="publish-success-card" class="hidden bg-gradient-to-br from-cardbg to-slate-900 border border-teal-500/40 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-2xl bg-teal-500/20 text-teal-400 border border-teal-500/40 flex items-center justify-center text-2xl">
+            <i class="fa-solid fa-circle-check"></i>
+          </div>
+          <div>
+            <h3 class="text-xl font-bold text-white">Repository Published Successfully!</h3>
+            <p class="text-sm text-slate-400">Your Cloud in a Bottle app repo is live on GitHub and ready for deployment.</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+          <!-- Install Command Card -->
+          <div class="bg-slate-900/90 border border-bordercol rounded-xl p-5 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold uppercase tracking-wider text-teal-400 flex items-center gap-1.5">
+                <i class="fa-solid fa-terminal"></i> 1-Click Install Command
+              </span>
+              <button onclick="copyInstallCmd()" class="text-xs text-slate-400 hover:text-white flex items-center gap-1">
+                <i class="fa-regular fa-copy"></i> Copy
+              </button>
+            </div>
+            <div class="bg-black/50 rounded-lg p-3 border border-slate-800">
+              <code id="install-cmd-code" class="text-xs text-emerald-400 font-mono break-all">openhost app install ...</code>
+            </div>
+            <p class="text-xs text-slate-500">Run this on your Cloud in a Bottle server (<code class="text-slate-400">yuanrui.dev</code>) via SSH to install immediately.</p>
+          </div>
+
+          <!-- Official Catalog Submission Card -->
+          <div class="bg-slate-900/90 border border-bordercol rounded-xl p-5 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                <i class="fa-solid fa-store"></i> Official Catalog Submission
+              </span>
+              <span class="text-xs px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">cloud-in-a-bottle</span>
+            </div>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Submit your packaged application to the official app-manifest store so all Cloud in a Bottle users can install it from their dashboard.
+            </p>
+            <div class="flex gap-2">
+              <button
+                onclick="handleSubmitCatalog()"
+                id="btn-submit-catalog"
+                class="flex-1 py-2 px-3 rounded-lg bg-amber-500 hover:bg-amber-400 text-darkbg font-semibold text-xs transition flex items-center justify-center gap-1.5"
+              >
+                <i class="fa-solid fa-code-pull-request"></i> Submit Pull Request
+              </button>
+              <a
+                id="link-catalog-web"
+                target="_blank"
+                href="#"
+                class="py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-bordercol transition flex items-center justify-center gap-1"
+                title="Manual Web PR"
+              >
+                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-2 flex items-center justify-between border-t border-bordercol/60">
+          <a id="published-repo-link" href="#" target="_blank" class="text-xs text-teal-400 hover:underline flex items-center gap-1.5">
+            <i class="fa-brands fa-github"></i> View Created Repository on GitHub <i class="fa-solid fa-chevron-right text-[10px]"></i>
+          </a>
+          <button onclick="resetWizard()" class="text-xs text-slate-400 hover:text-white transition">
+            Bottle Another App
+          </button>
+        </div>
+      </div>
+
+    </section>
+
+
+    <!-- TAB 2: MY BOTTLED PROJECTS -->
+    <section id="view-projects" class="hidden space-y-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xl font-bold text-white">My Bottled Applications</h2>
+          <p class="text-sm text-slate-400">Track and manage repositories you have packaged, monitor upstream updates</p>
+        </div>
+        <button onclick="loadProjects()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 border border-bordercol flex items-center gap-1.5">
+          <i class="fa-solid fa-rotate"></i> Refresh
+        </button>
+      </div>
+
+      <div class="bg-cardbg border border-bordercol rounded-2xl overflow-hidden shadow-xl">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-slate-900/80 text-xs uppercase tracking-wider text-slate-400 border-b border-bordercol">
+              <tr>
+                <th class="px-6 py-3.5">App Name</th>
+                <th class="px-6 py-3.5">Upstream Source</th>
+                <th class="px-6 py-3.5">Packaged Tag</th>
+                <th class="px-6 py-3.5">Target Repo</th>
+                <th class="px-6 py-3.5 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="projects-table-body" class="divide-y divide-bordercol">
+              <!-- Injected dynamically -->
+            </tbody>
+          </table>
+        </div>
+        <div id="no-projects-msg" class="hidden p-8 text-center text-slate-500 text-sm">
+          No bottled projects yet. Use the <button onclick="switchTab('wizard')" class="text-teal-400 underline">Bottle App</button> wizard to package your first GitHub repository!
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+
+  <!-- SETTINGS MODAL -->
+  <div id="settings-modal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-cardbg border border-bordercol rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5">
+      <div class="flex items-center justify-between border-b border-bordercol pb-4">
+        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-sliders text-teal-400"></i> Settings & Integrations
+        </h3>
+        <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-white">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form id="settings-form" onsubmit="event.preventDefault(); saveSettings();" class="space-y-4 text-sm">
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">GitHub Personal Access Token</label>
+          <input
+            type="password"
+            id="cfg-gh-token"
+            placeholder="ghp_... (scopes: repo, workflow)"
+            class="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-bordercol text-white placeholder-slate-600 focus:outline-none focus:border-teal-500 transition text-xs"
+          />
+          <p class="text-[11px] text-slate-500 mt-1">Required to create repositories under your GitHub account and submit catalog PRs.</p>
+        </div>
+
+        <div class="border-t border-bordercol pt-4">
+          <label class="block font-medium text-slate-300 mb-1">LLM Base URL</label>
+          <input
+            type="text"
+            id="cfg-llm-url"
+            placeholder="https://api.openai.com/v1"
+            class="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-bordercol text-white placeholder-slate-600 focus:outline-none focus:border-teal-500 transition text-xs font-mono"
+          />
+          <p class="text-[11px] text-slate-500 mt-1">Compatible with OpenAI, DeepSeek, OpenRouter, etc.</p>
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">LLM API Key</label>
+          <input
+            type="password"
+            id="cfg-llm-key"
+            placeholder="sk-..."
+            class="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-bordercol text-white placeholder-slate-600 focus:outline-none focus:border-teal-500 transition text-xs"
+          />
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">LLM Model Name</label>
+          <input
+            type="text"
+            id="cfg-llm-model"
+            placeholder="gpt-4o"
+            class="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-bordercol text-white placeholder-slate-600 focus:outline-none focus:border-teal-500 transition text-xs font-mono"
+          />
+        </div>
+
+        <div class="flex justify-end gap-3 pt-4 border-t border-bordercol">
+          <button type="button" onclick="closeSettingsModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-medium hover:bg-slate-700 transition">
+            Cancel
+          </button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-teal-500 text-darkbg text-xs font-bold hover:bg-teal-400 transition">
+            Save Settings
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="hidden fixed bottom-6 right-6 z-50 bg-cardbg border border-teal-500/50 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 text-sm">
+    <i id="toast-icon" class="fa-solid fa-check text-teal-400"></i>
+    <span id="toast-msg">Success</span>
+  </div>
+
+  <!-- App JavaScript Logic -->
+  <script>
+    // State
+    let currentRepoSummary = null;
+    let generatedData = null;
+    let activeFileKey = 'cloudinabottle.toml';
+    let currentProjectId = null;
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      fetchSettings();
+      loadProjects();
+    });
+
+    // Toast
+    function showToast(msg, type = 'success') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-msg');
+      const toastIcon = document.getElementById('toast-icon');
+      toastMsg.innerText = msg;
+      toastIcon.className = type === 'error' ? 'fa-solid fa-triangle-exclamation text-rose-400' : 'fa-solid fa-check text-teal-400';
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 4000);
+    }
+
+    // Tabs
+    function switchTab(tab) {
+      const vWizard = document.getElementById('view-wizard');
+      const vProjects = document.getElementById('view-projects');
+      const bWizard = document.getElementById('tab-btn-wizard');
+      const bProjects = document.getElementById('tab-btn-projects');
+
+      if (tab === 'wizard') {
+        vWizard.classList.remove('hidden');
+        vProjects.classList.add('hidden');
+        bWizard.className = 'text-sm font-medium px-3 py-1.5 rounded-lg bg-teal-500/10 text-teal-400 border border-teal-500/30 hover:bg-teal-500/20 transition';
+        bProjects.className = 'text-sm font-medium px-3 py-1.5 rounded-lg text-slate-300 hover:bg-slate-800 transition';
+      } else {
+        vWizard.classList.add('hidden');
+        vProjects.classList.remove('hidden');
+        bProjects.className = 'text-sm font-medium px-3 py-1.5 rounded-lg bg-teal-500/10 text-teal-400 border border-teal-500/30 hover:bg-teal-500/20 transition';
+        bWizard.className = 'text-sm font-medium px-3 py-1.5 rounded-lg text-slate-300 hover:bg-slate-800 transition';
+        loadProjects();
+      }
+    }
+
+    // Settings
+    async function fetchSettings() {
+      try {
+        const res = await fetch('/api/settings');
+        const data = await res.json();
+        
+        // Update badges
+        const dotGh = document.getElementById('dot-gh');
+        const textGh = document.getElementById('text-gh');
+        if (data.has_github_token) {
+          dotGh.className = 'w-2 h-2 rounded-full bg-emerald-400';
+          textGh.innerText = 'GitHub Ready';
+        } else {
+          dotGh.className = 'w-2 h-2 rounded-full bg-rose-400';
+          textGh.innerText = 'GitHub Token Missing';
+        }
+
+        const dotLlm = document.getElementById('dot-llm');
+        const textLlm = document.getElementById('text-llm');
+        if (data.has_llm_key) {
+          dotLlm.className = 'w-2 h-2 rounded-full bg-emerald-400';
+          textLlm.innerText = `LLM (${data.llm_model})`;
+        } else {
+          dotLlm.className = 'w-2 h-2 rounded-full bg-rose-400';
+          textLlm.innerText = 'LLM Key Missing';
+        }
+
+        // Set form defaults
+        document.getElementById('cfg-llm-url').value = data.llm_base_url || 'https://api.openai.com/v1';
+        document.getElementById('cfg-llm-model').value = data.llm_model || 'gpt-4o';
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function openSettingsModal() {
+      document.getElementById('settings-modal').classList.remove('hidden');
+    }
+
+    function closeSettingsModal() {
+      document.getElementById('settings-modal').classList.add('hidden');
+    }
+
+    async function saveSettings() {
+      const ghToken = document.getElementById('cfg-gh-token').value;
+      const llmUrl = document.getElementById('cfg-llm-url').value;
+      const llmKey = document.getElementById('cfg-llm-key').value;
+      const llmModel = document.getElementById('cfg-llm-model').value;
+
+      const payload = {
+        github_token: ghToken || null,
+        llm_base_url: llmUrl || null,
+        llm_api_key: llmKey || null,
+        llm_model: llmModel || null
+      };
+
+      try {
+        const res = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          showToast('Settings saved successfully!');
+          closeSettingsModal();
+          fetchSettings();
+        } else {
+          showToast('Failed to save settings', 'error');
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    // Step 1: Analyze Repo
+    async function handleAnalyze() {
+      const repoUrl = document.getElementById('repo-input').value.trim();
+      const btn = document.getElementById('btn-analyze');
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Analyzing...`;
+
+      try {
+        const res = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ repo_url: repoUrl })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Analysis failed');
+
+        currentRepoSummary = data;
+        renderAnalysisCard(data);
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-magnifying-glass"></i> Analyze Repo`;
+      }
+    }
+
+    function renderAnalysisCard(data) {
+      document.getElementById('repo-title').innerText = data.full_name;
+      document.getElementById('repo-desc').innerText = data.description || 'No description provided';
+      document.getElementById('repo-stars').innerHTML = `<i class="fa-solid fa-star text-[10px]"></i> ${data.stars}`;
+      document.getElementById('repo-tag').innerText = data.latest_tag || 'latest (main)';
+
+      const filesList = document.getElementById('detected-files-list');
+      filesList.innerHTML = '';
+      const fnames = Object.keys(data.files || {});
+      if (fnames.length === 0) {
+        filesList.innerHTML = `<span class="text-xs text-slate-500 italic">No standard packaging files detected</span>`;
+      } else {
+        fnames.forEach(f => {
+          const span = document.createElement('span');
+          span.className = 'text-xs px-2.5 py-1 rounded bg-slate-800 text-teal-300 border border-bordercol font-mono flex items-center gap-1.5';
+          span.innerHTML = `<i class="fa-regular fa-file-code"></i> ${f}`;
+          filesList.appendChild(span);
+        });
+      }
+
+      document.getElementById('analysis-card').classList.remove('hidden');
+      document.getElementById('analysis-card').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Step 2: Generate Bottle with LLM
+    async function handleGenerate() {
+      if (!currentRepoSummary) return;
+      const btn = document.getElementById('btn-generate');
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Packaging with LLM...`;
+
+      const customPrompt = document.getElementById('custom-instructions').value.trim();
+
+      try {
+        const res = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            repo_summary: currentRepoSummary,
+            custom_prompt: customPrompt
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Generation failed');
+
+        generatedData = data;
+        renderStudio(data);
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles"></i> Generate Bottle App with LLM`;
+      }
+    }
+
+    function renderStudio(data) {
+      document.getElementById('studio-app-title').innerText = data.title || data.name;
+      document.getElementById('studio-app-slug').innerText = data.name;
+      document.getElementById('studio-app-summary').innerText = data.summary || '';
+
+      // Ensure catalog_toml is included in files map if present
+      if (data.catalog_toml && !data.files['catalog/app.toml']) {
+        data.files['catalog/app.toml'] = data.catalog_toml;
+      }
+
+      // Render tabs
+      const tabsContainer = document.getElementById('file-tabs');
+      tabsContainer.innerHTML = '';
+      const fnames = Object.keys(data.files);
+      activeFileKey = fnames.includes('cloudinabottle.toml') ? 'cloudinabottle.toml' : fnames[0];
+
+      fnames.forEach(fname => {
+        const tabBtn = document.createElement('button');
+        tabBtn.id = `tab-${fname}`;
+        tabBtn.className = getTabClass(fname === activeFileKey);
+        tabBtn.innerText = fname;
+        tabBtn.onclick = () => selectFile(fname);
+        tabsContainer.appendChild(tabBtn);
+      });
+
+      // Load active file
+      document.getElementById('active-file-editor').value = data.files[activeFileKey] || '';
+
+      document.getElementById('studio-card').classList.remove('hidden');
+      document.getElementById('studio-card').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function getTabClass(isActive) {
+      return isActive
+        ? 'px-3 py-1 rounded-md text-xs font-mono font-semibold bg-teal-500/20 text-teal-300 border border-teal-500/40 transition'
+        : 'px-3 py-1 rounded-md text-xs font-mono text-slate-400 hover:text-white hover:bg-slate-800 transition';
+    }
+
+    function selectFile(fname) {
+      activeFileKey = fname;
+      document.querySelectorAll('#file-tabs button').forEach(b => {
+        b.className = getTabClass(b.innerText === fname);
+      });
+      document.getElementById('active-file-editor').value = generatedData.files[fname] || '';
+    }
+
+    function handleFileContentChange(val) {
+      if (generatedData && generatedData.files) {
+        generatedData.files[activeFileKey] = val;
+      }
+    }
+
+    // Step 3: Publish Repo
+    async function handlePublish() {
+      if (!generatedData) return;
+      const btn = document.getElementById('btn-publish');
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Pushing to GitHub...`;
+
+      // Extract files to publish (everything except catalog/app.toml which goes to catalog)
+      const publishFiles = { ...generatedData.files };
+      let catalogToml = generatedData.catalog_toml || '';
+      if (publishFiles['catalog/app.toml']) {
+        catalogToml = publishFiles['catalog/app.toml'];
+        delete publishFiles['catalog/app.toml'];
+      }
+
+      const payload = {
+        name: generatedData.name,
+        title: generatedData.title || generatedData.name,
+        description: generatedData.description || '',
+        source_repo: currentRepoSummary.full_name,
+        upstream_tag: currentRepoSummary.latest_tag || '',
+        files: publishFiles,
+        catalog_toml: catalogToml
+      };
+
+      try {
+        const res = await fetch('/api/publish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Publish failed');
+
+        renderPublishSuccess(data);
+        showToast('Repository created and files committed successfully!');
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-brands fa-github"></i> Create GitHub Repo & Push`;
+      }
+    }
+
+    function renderPublishSuccess(data) {
+      document.getElementById('install-cmd-code').innerText = data.install_command;
+      document.getElementById('published-repo-link').href = data.repo_url;
+      document.getElementById('publish-success-card').classList.remove('hidden');
+      document.getElementById('publish-success-card').scrollIntoView({ behavior: 'smooth' });
+
+      // Prepare catalog web link
+      const encToml = encodeURIComponent(data.catalog_toml);
+      const appName = generatedData.name;
+      document.getElementById('link-catalog-web').href =
+        `https://github.com/cloud-in-a-bottle/app-manifest/new/main?filename=apps/${appName}/app.toml&value=${encToml}`;
+    }
+
+    function copyInstallCmd() {
+      const cmd = document.getElementById('install-cmd-code').innerText;
+      navigator.clipboard.writeText(cmd);
+      showToast('Install command copied to clipboard!');
+    }
+
+    async function handleSubmitCatalog() {
+      if (!generatedData) return;
+      const btn = document.getElementById('btn-submit-catalog');
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Creating PR...`;
+
+      const catalogToml = generatedData.catalog_toml || (generatedData.files && generatedData.files['catalog/app.toml']) || '';
+
+      try {
+        const res = await fetch(`/api/projects/1/submit-catalog`, { // project ID placeholder or dynamic
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: generatedData.name,
+            catalog_toml: catalogToml
+          })
+        });
+        const data = await res.json();
+        if (data.success && data.pr_url) {
+          showToast(`Pull Request created! PR #${data.pr_number}`);
+          window.open(data.pr_url, '_blank');
+        } else {
+          showToast(data.error || 'Opening web PR page...', 'error');
+          if (data.web_url) window.open(data.web_url, '_blank');
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-code-pull-request"></i> Submit Pull Request`;
+      }
+    }
+
+    function resetWizard() {
+      currentRepoSummary = null;
+      generatedData = null;
+      document.getElementById('repo-input').value = '';
+      document.getElementById('analysis-card').classList.add('hidden');
+      document.getElementById('studio-card').classList.add('hidden');
+      document.getElementById('publish-success-card').classList.add('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Projects Tab
+    async function loadProjects() {
+      try {
+        const res = await fetch('/api/projects');
+        const projects = await res.json();
+        const tbody = document.getElementById('projects-table-body');
+        const emptyMsg = document.getElementById('no-projects-msg');
+        tbody.innerHTML = '';
+
+        if (!projects || projects.length === 0) {
+          emptyMsg.classList.remove('hidden');
+          return;
+        }
+        emptyMsg.classList.add('hidden');
+
+        projects.forEach(p => {
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-slate-800/40 transition';
+          tr.innerHTML = `
+            <td class="px-6 py-4 font-semibold text-white">
+              <div class="flex items-center gap-2">
+                <span>${p.title}</span>
+                <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-teal-400 font-mono">${p.name}</span>
+              </div>
+            </td>
+            <td class="px-6 py-4 text-xs font-mono text-slate-400">
+              <a href="https://github.com/${p.source_repo}" target="_blank" class="hover:text-teal-400 hover:underline">
+                ${p.source_repo}
+              </a>
+            </td>
+            <td class="px-6 py-4 text-xs font-mono text-slate-300">
+              ${p.upstream_tag || 'none'}
+            </td>
+            <td class="px-6 py-4 text-xs">
+              <a href="${p.target_repo_url}" target="_blank" class="text-teal-400 hover:underline font-mono">
+                ${p.target_repo_url.replace('https://github.com/', '')}
+              </a>
+            </td>
+            <td class="px-6 py-4 text-right space-x-2">
+              <button onclick="checkUpstreamUpdate(${p.id}, this)" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 border border-bordercol transition" title="Check Upstream Update">
+                <i class="fa-solid fa-cloud-arrow-down"></i> Check Update
+              </button>
+              <button onclick="deleteProject(${p.id})" class="px-2.5 py-1 rounded bg-rose-500/10 hover:bg-rose-500/20 text-xs text-rose-400 border border-rose-500/20 transition" title="Delete record">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function checkUpstreamUpdate(id, btn) {
+      btn.disabled = true;
+      const oldHtml = btn.innerHTML;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
+
+      try {
+        const res = await fetch(`/api/projects/${id}/check-upstream`, { method: 'POST' });
+        const data = await res.json();
+        if (data.has_update) {
+          showToast(`Update available! Upstream has released ${data.latest_tag} (current: ${data.current_tag})`);
+        } else {
+          showToast(`Up to date. Current tag (${data.current_tag || 'latest'}) matches upstream.`);
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = oldHtml;
+      }
+    }
+
+    async function deleteProject(id) {
+      if (!confirm('Are you sure you want to remove this project from your tracking list?')) return;
+      try {
+        await fetch(`/api/projects/${id}`, { method: 'DELETE' });
+        showToast('Project removed');
+        loadProjects();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+  </script>
+</body>
+</html>

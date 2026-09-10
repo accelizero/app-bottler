@@ -1,0 +1,20 @@
+[app]
+name = "app-bottler"
+version = "0.1.0"
+title = "App Bottler"
+description = "Studio for migrating and packaging open-source GitHub projects into Cloud in a Bottle (OpenHost) apps."
+
+[runtime.container]
+image = "Dockerfile"
+port = 8080
+
+[routing]
+public_paths = ["/"]
+health_check = "/"
+
+[resources]
+memory_mb = 512
+cpu_cores = 1
+
+[data]
+app_data = true
