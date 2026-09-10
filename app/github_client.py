@@ -15,6 +15,8 @@ async def fetch_repo_summary(repo: str, token: str = "") -> dict:
     async with httpx.AsyncClient(timeout=10) as client:
         # 1. Base Repo Info
         res = await client.get(f"https://api.github.com/repos/{repo}", headers=headers)
+        if res.status_code == 403 and "rate limit" in res.text.lower():
+            raise ValueError("GitHub API rate limit exceeded. Please configure your GitHub Personal Access Token in Settings to increase your quota to 5,000 req/hour.")
         if res.status_code != 200:
             raise ValueError(f"GitHub repo not found or inaccessible ({res.status_code})")
         info = res.json()

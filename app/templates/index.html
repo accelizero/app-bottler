@@ -730,7 +730,7 @@
       const catalogToml = generatedData.catalog_toml || (generatedData.files && generatedData.files['catalog/app.toml']) || '';
 
       try {
-        const res = await fetch(`/api/projects/1/submit-catalog`, { // project ID placeholder or dynamic
+        const res = await fetch('/api/catalog/submit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -803,6 +803,9 @@
               </a>
             </td>
             <td class="px-6 py-4 text-right space-x-2">
+              <button onclick="submitProjectCatalogById(${p.id}, this)" class="px-2.5 py-1 rounded bg-amber-500/10 hover:bg-amber-500/20 text-xs text-amber-400 border border-amber-500/20 transition" title="Submit to Official Catalog">
+                <i class="fa-solid fa-code-pull-request"></i> Submit PR
+              </button>
               <button onclick="checkUpstreamUpdate(${p.id}, this)" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 border border-bordercol transition" title="Check Upstream Update">
                 <i class="fa-solid fa-cloud-arrow-down"></i> Check Update
               </button>
@@ -818,6 +821,32 @@
       }
     }
 
+    async function submitProjectCatalogById(id, btn) {
+      btn.disabled = true;
+      const oldHtml = btn.innerHTML;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
+      try {
+        const res = await fetch(`/api/projects/${id}/submit-catalog`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        const data = await res.json();
+        if (data.success && data.pr_url) {
+          showToast(`Pull Request created! PR #${data.pr_number}`);
+          window.open(data.pr_url, '_blank');
+        } else {
+          showToast(data.error || 'Opening web PR page...', 'error');
+          if (data.web_url) window.open(data.web_url, '_blank');
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = oldHtml;
+      }
+    }
+
     async function checkUpstreamUpdate(id, btn) {
       btn.disabled = true;
       const oldHtml = btn.innerHTML;
@@ -828,6 +857,16 @@
         const data = await res.json();
         if (data.has_update) {
           showToast(`Update available! Upstream has released ${data.latest_tag} (current: ${data.current_tag})`);
+          btn.className = 'px-2.5 py-1 rounded bg-teal-500/20 hover:bg-teal-500/30 text-xs text-teal-300 border border-teal-500/40 transition font-medium';
+          btn.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles"></i> Upgrade to ${data.latest_tag}`;
+          btn.disabled = false;
+          btn.onclick = () => {
+            document.getElementById('repo-input').value = data.source_repo;
+            document.getElementById('custom-instructions').value = `Upgrade to upstream release ${data.latest_tag}`;
+            switchTab('wizard');
+            handleAnalyze();
+          };
+          return;
         } else {
           showToast(`Up to date. Current tag (${data.current_tag || 'latest'}) matches upstream.`);
         }

@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import time
 import urllib.parse
 import httpx
 
@@ -91,7 +92,16 @@ async def submit_to_catalog(
             headers=headers,
             json={"ref": f"refs/heads/{branch_name}", "sha": base_sha},
         )
-        if create_ref.status_code not in (200, 201, 422):
+        if create_ref.status_code == 422:
+            # Branch already exists, append timestamp suffix
+            branch_name = f"add-app-{name}-{int(time.time()) % 10000}"
+            create_ref = await client.post(
+                f"https://api.github.com/repos/{username}/{upstream_repo}/git/refs",
+                headers=headers,
+                json={"ref": f"refs/heads/{branch_name}", "sha": base_sha},
+            )
+
+        if create_ref.status_code not in (200, 201):
             return {
                 "success": False,
                 "error": f"Failed to create branch in fork: {create_ref.text}",

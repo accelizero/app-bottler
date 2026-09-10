@@ -158,7 +158,7 @@ async def publish_app(payload: PublishPayload):
 
         # Save to DB
         with get_db() as conn:
-            conn.execute(
+            cursor = conn.execute(
                 """
                 INSERT OR REPLACE INTO projects (
                     name, title, source_repo, upstream_tag, target_repo_url, cloud_app_name, files_json, updated_at
@@ -174,6 +174,7 @@ async def publish_app(payload: PublishPayload):
                     json.dumps(payload.files),
                 ),
             )
+            project_id = cursor.lastrowid
             conn.commit()
 
         # Generate catalog TOML if not already provided
@@ -188,6 +189,8 @@ async def publish_app(payload: PublishPayload):
 
         return {
             "status": "ok",
+            "project_id": project_id,
+            "name": payload.name,
             "repo_url": target_repo_url,
             "install_command": f"openhost app install {target_repo_url}",
             "catalog_toml": catalog_toml,
@@ -243,8 +246,8 @@ async def check_upstream(project_id: int):
     }
 
 
-@app.post("/api/projects/{project_id}/submit-catalog")
-async def submit_project_catalog(project_id: int, payload: SubmitCatalogPayload):
+@app.post("/api/catalog/submit")
+async def submit_catalog_endpoint(payload: SubmitCatalogPayload):
     token = get_setting("github_token", "")
     if not token:
         raise HTTPException(status_code=400, detail="GitHub Token is required for catalog submission.")
@@ -253,6 +256,37 @@ async def submit_project_catalog(project_id: int, payload: SubmitCatalogPayload)
         token=token,
         name=payload.name,
         catalog_toml=payload.catalog_toml,
+    )
+    return res
+
+
+@app.post("/api/projects/{project_id}/submit-catalog")
+async def submit_project_catalog(project_id: int, payload: SubmitCatalogPayload | None = None):
+    token = get_setting("github_token", "")
+    if not token:
+        raise HTTPException(status_code=400, detail="GitHub Token is required for catalog submission.")
+
+    with get_db() as conn:
+        row = conn.execute("SELECT * FROM projects WHERE id = ?", (project_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        name = row["name"]
+        title = row["title"]
+        target_repo_url = row["target_repo_url"]
+        catalog_toml = payload.catalog_toml if (payload and payload.catalog_toml) else ""
+        if not catalog_toml:
+            catalog_toml = generate_catalog_toml(
+                name=name,
+                title=title,
+                description=f"Cloud in a Bottle wrapper for {title}",
+                repo_url=target_repo_url,
+            )
+
+    res = await submit_to_catalog(
+        token=token,
+        name=name,
+        catalog_toml=catalog_toml,
     )
     return res
 
