@@ -359,14 +359,22 @@
 
       <form id="settings-form" onsubmit="event.preventDefault(); saveSettings();" class="space-y-4 text-sm">
         <div>
-          <label class="block font-medium text-slate-300 mb-1">GitHub Personal Access Token</label>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block font-medium text-slate-300">GitHub Personal Access Token</label>
+            <a href="https://github.com/settings/tokens/new?scopes=repo&description=AppBottler" target="_blank" class="text-[11px] text-teal-400 hover:underline flex items-center gap-1">
+              <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i> Generate Token (Classic)
+            </a>
+          </div>
           <input
             type="password"
             id="cfg-gh-token"
-            placeholder="ghp_... (scopes: repo, workflow)"
-            class="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-bordercol text-white placeholder-slate-600 focus:outline-none focus:border-teal-500 transition text-xs"
+            placeholder="ghp_... (Classic Token with 'repo' scope)"
+            class="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-bordercol text-white placeholder-slate-600 focus:outline-none focus:border-teal-500 transition text-xs font-mono"
           />
-          <p class="text-[11px] text-slate-500 mt-1">Required to create repositories under your GitHub account and submit catalog PRs.</p>
+          <p class="text-[11px] text-amber-400/90 mt-1.5 flex items-start gap-1">
+            <i class="fa-solid fa-circle-exclamation mt-0.5 text-[10px]"></i>
+            <span>GitHub 要求创建个人仓库必须使用 <strong>Classic Token (ghp_ 开头)</strong> 并勾选 <code>repo</code> 权限。Fine-grained Token (github_pat_ 开头) 受 GitHub 平台限制无法通过 API 创建个人仓库。</span>
+          </p>
         </div>
 
         <div class="border-t border-bordercol pt-4">

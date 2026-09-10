@@ -41,7 +41,7 @@ async def submit_to_catalog(
     """Fork cloud-in-a-bottle/app-manifest, commit apps/<name>/app.toml, and create a Pull Request."""
     headers = {
         "Accept": "application/vnd.github.v3+json",
-        "Authorization": f"token {token}",
+        "Authorization": f"Bearer {token}",
         "User-Agent": "AppBottler/1.0",
     }
     upstream_owner = "cloud-in-a-bottle"

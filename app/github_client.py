@@ -51,7 +51,7 @@ async def fetch_repo_summary(repo: str, token: str = "") -> dict:
 
 
 async def get_authenticated_user(token: str) -> str:
-    headers = {"Accept": "application/vnd.github.v3+json", "Authorization": f"token {token}", "User-Agent": "AppBottler/1.0"}
+    headers = {"Accept": "application/vnd.github.v3+json", "Authorization": f"Bearer {token}", "User-Agent": "AppBottler/1.0"}
     async with httpx.AsyncClient(timeout=10) as client:
         res = await client.get("https://api.github.com/user", headers=headers)
         if res.status_code != 200:
@@ -61,7 +61,13 @@ async def get_authenticated_user(token: str) -> str:
 
 async def create_or_update_repo(token: str, repo_name: str, description: str, files: dict[str, str]) -> str:
     """Create a repo under the authenticated user (if not exists) and commit all files."""
-    headers = {"Accept": "application/vnd.github.v3+json", "Authorization": f"token {token}", "User-Agent": "AppBottler/1.0"}
+    if token.startswith("github_pat_"):
+        raise ValueError(
+            "GitHub Fine-grained tokens (github_pat_...) cannot create personal repositories via API due to a GitHub platform limitation. "
+            "Please use a Classic Token (starts with 'ghp_') with 'repo' scope (generate at: https://github.com/settings/tokens/new?scopes=repo&description=AppBottler)."
+        )
+
+    headers = {"Accept": "application/vnd.github.v3+json", "Authorization": f"Bearer {token}", "User-Agent": "AppBottler/1.0"}
     async with httpx.AsyncClient(timeout=15) as client:
         # Check user
         user = await get_authenticated_user(token)
@@ -78,7 +84,14 @@ async def create_or_update_repo(token: str, repo_name: str, description: str, fi
             }
             create_res = await client.post("https://api.github.com/user/repos", headers=headers, json=create_payload)
             if create_res.status_code not in (200, 201):
-                raise ValueError(f"Failed to create repo: {create_res.text}")
+                err_text = create_res.text
+                if "resource not accessible by personal access token" in err_text.lower():
+                    raise ValueError(
+                        "GitHub Token permission error: Your token lacks repository creation permission. "
+                        "Please use a Classic Token (starts with 'ghp_') with 'repo' scope: "
+                        "https://github.com/settings/tokens/new?scopes=repo&description=AppBottler"
+                    )
+                raise ValueError(f"Failed to create repo: {err_text}")
 
         # Commit files one by one (or update if exists)
         for filepath, content in files.items():
