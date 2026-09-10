@@ -66,9 +66,15 @@ class SubmitCatalogPayload(BaseModel):
     catalog_toml: str
 
 
+@app.get("/healthz")
+@app.get("/health")
+def healthz():
+    return {"status": "ok"}
+
+
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="index.html")
 
 
 @app.get("/api/settings")

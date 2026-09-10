@@ -10,7 +10,7 @@ port = 8080
 
 [routing]
 public_paths = ["/"]
-health_check = "/"
+health_check = "/healthz"
 
 [resources]
 memory_mb = 512
