@@ -163,11 +163,19 @@
           </button>
         </div>
 
-        <!-- Detected Files -->
-        <div>
-          <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Detected Upstream Assets</h4>
-          <div id="detected-files-list" class="flex flex-wrap gap-2">
-            <!-- Badges dynamically inserted -->
+        <!-- Detected Files & Archetype -->
+        <div class="space-y-4">
+          <div>
+            <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2.5">Archetype & Access Recommendation</h4>
+            <div id="archetype-badges" class="flex flex-wrap gap-2.5">
+              <!-- Badges dynamically inserted -->
+            </div>
+          </div>
+          <div>
+            <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Detected Upstream Manifests & Assets</h4>
+            <div id="detected-files-list" class="flex flex-wrap gap-2">
+              <!-- Badges dynamically inserted -->
+            </div>
           </div>
         </div>
       </div>
@@ -185,8 +193,30 @@
             <p id="studio-app-summary" class="text-xs text-slate-400 mt-1 max-w-2xl leading-relaxed"></p>
           </div>
 
-          <!-- Actions -->
-          <div class="flex items-center gap-3">
+          <!-- Actions & Security Controls -->
+          <div class="flex flex-wrap items-center gap-3">
+            <div class="flex items-center gap-1.5 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-bordercol text-xs">
+              <span class="text-slate-400 font-medium mr-1">Access:</span>
+              <button
+                type="button"
+                id="sec-btn-private"
+                onclick="setAccessControl('private')"
+                class="px-2.5 py-1 rounded-lg text-xs font-semibold transition"
+                title="Cloud in a Bottle gateway enforces owner login. Non-owners are redirected to /login."
+              >
+                <i class="fa-solid fa-lock text-amber-400 mr-1"></i> Private (Owner Only)
+              </button>
+              <button
+                type="button"
+                id="sec-btn-public"
+                onclick="setAccessControl('public')"
+                class="px-2.5 py-1 rounded-lg text-xs font-semibold transition"
+                title="Publicly accessible to anyone without gateway authentication."
+              >
+                <i class="fa-solid fa-globe text-emerald-400 mr-1"></i> Public
+              </button>
+            </div>
+
             <button
               onclick="handlePublish()"
               id="btn-publish"
@@ -578,6 +608,19 @@
       document.getElementById('repo-stars').innerHTML = `<i class="fa-solid fa-star text-[10px]"></i> ${data.stars}`;
       document.getElementById('repo-tag').innerText = data.latest_tag || 'latest (main)';
 
+      // Render Archetype & Recommendation Badges
+      const badgesContainer = document.getElementById('archetype-badges');
+      const isPriv = data.recommended_access === 'private';
+      badgesContainer.innerHTML = `
+        <span class="text-xs px-3 py-1 rounded-full bg-slate-800 text-teal-300 border border-teal-500/30 font-medium flex items-center gap-1.5">
+          <i class="fa-solid fa-shapes"></i> Archetype: ${data.archetype_label || 'Web Application'}
+        </span>
+        <span class="text-xs px-3 py-1 rounded-full ${isPriv ? 'bg-amber-500/10 text-amber-300 border border-amber-500/30' : 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30'} font-medium flex items-center gap-1.5">
+          <i class="fa-solid ${isPriv ? 'fa-lock' : 'fa-globe'}"></i> Recommended: ${isPriv ? 'Private (Owner Only)' : 'Public'}
+        </span>
+        ${data.has_examples ? `<span class="text-xs px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 font-medium flex items-center gap-1.5"><i class="fa-solid fa-book-bookmark"></i> Starter Examples Available (${(data.example_dirs || []).join(', ')})</span>` : ''}
+      `;
+
       const filesList = document.getElementById('detected-files-list');
       filesList.innerHTML = '';
       const fnames = Object.keys(data.files || {});
@@ -652,6 +695,11 @@
         tabsContainer.appendChild(tabBtn);
       });
 
+      // Sync security access mode button states
+      const toml = data.files['cloudinabottle.toml'] || '';
+      const isPrivate = /public_paths\s*=\s*\[\s*\]/.test(toml);
+      updateAccessSecurityUI(isPrivate ? 'private' : 'public');
+
       // Load active file
       document.getElementById('active-file-editor').value = data.files[activeFileKey] || '';
 
@@ -671,6 +719,45 @@
         b.className = getTabClass(b.innerText === fname);
       });
       document.getElementById('active-file-editor').value = generatedData.files[fname] || '';
+    }
+
+    function updateAccessSecurityUI(mode) {
+      const pBtn = document.getElementById('sec-btn-private');
+      const gBtn = document.getElementById('sec-btn-public');
+      if (!pBtn || !gBtn) return;
+      if (mode === 'private') {
+        pBtn.className = 'px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-500/25 text-amber-300 border border-amber-500/40 shadow-sm';
+        gBtn.className = 'px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition border border-transparent';
+      } else {
+        gBtn.className = 'px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 shadow-sm';
+        pBtn.className = 'px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition border border-transparent';
+      }
+    }
+
+    function setAccessControl(mode) {
+      if (!generatedData || !generatedData.files || !generatedData.files['cloudinabottle.toml']) return;
+      let toml = generatedData.files['cloudinabottle.toml'];
+      if (mode === 'private') {
+        if (/public_paths\s*=\s*\[[^\]]*\]/.test(toml)) {
+          toml = toml.replace(/public_paths\s*=\s*\[[^\]]*\]/, 'public_paths = []');
+        } else if (toml.includes('[routing]')) {
+          toml = toml.replace('[routing]', '[routing]\npublic_paths = []');
+        }
+        updateAccessSecurityUI('private');
+        showToast('Switched to Private (Owner Only). Cloud in a Bottle gateway enforces owner login.');
+      } else {
+        if (/public_paths\s*=\s*\[[^\]]*\]/.test(toml)) {
+          toml = toml.replace(/public_paths\s*=\s*\[[^\]]*\]/, 'public_paths = ["/"]');
+        } else if (toml.includes('[routing]')) {
+          toml = toml.replace('[routing]', '[routing]\npublic_paths = ["/"]');
+        }
+        updateAccessSecurityUI('public');
+        showToast('Switched to Public. Anyone on the internet can access this application directly.');
+      }
+      generatedData.files['cloudinabottle.toml'] = toml;
+      if (activeFileKey === 'cloudinabottle.toml') {
+        document.getElementById('active-file-editor').value = toml;
+      }
     }
 
     function handleFileContentChange(val) {

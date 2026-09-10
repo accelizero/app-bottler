@@ -3,7 +3,7 @@ import httpx
 
 
 async def fetch_repo_summary(repo: str, token: str = "") -> dict:
-    """Fetch repo info, latest release, and check for Dockerfile / docker-compose."""
+    """Fetch repo info, latest release, manifests, and classify repo archetype."""
     repo = repo.strip().rstrip("/")
     if "github.com/" in repo:
         repo = repo.split("github.com/")[-1]
@@ -12,11 +12,13 @@ async def fetch_repo_summary(repo: str, token: str = "") -> dict:
     if token:
         headers["Authorization"] = f"token {token}"
 
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with httpx.AsyncClient(timeout=12) as client:
         # 1. Base Repo Info
         res = await client.get(f"https://api.github.com/repos/{repo}", headers=headers)
         if res.status_code == 403 and "rate limit" in res.text.lower():
-            raise ValueError("GitHub API rate limit exceeded. Please configure your GitHub Personal Access Token in Settings to increase your quota to 5,000 req/hour.")
+            raise ValueError(
+                "GitHub API rate limit exceeded. Please configure your GitHub Personal Access Token in Settings to increase your quota to 5,000 req/hour."
+            )
         if res.status_code != 200:
             raise ValueError(f"GitHub repo not found or inaccessible ({res.status_code})")
         info = res.json()
@@ -27,16 +29,61 @@ async def fetch_repo_summary(repo: str, token: str = "") -> dict:
         if rel_res.status_code == 200:
             latest_tag = rel_res.json().get("tag_name", "")
 
-        # 3. Readme / Dockerfile / docker-compose existence
+        # 3. Read key manifests and files
+        candidate_files = [
+            "Dockerfile",
+            "docker-compose.yml",
+            "docker-compose.yaml",
+            "README.md",
+            "pyproject.toml",
+            "setup.py",
+            "requirements.txt",
+            "package.json",
+            "go.mod",
+            "Cargo.toml",
+        ]
         files = {}
-        for fname in ["Dockerfile", "docker-compose.yml", "docker-compose.yaml", "README.md"]:
+        for fname in candidate_files:
             f_res = await client.get(f"https://api.github.com/repos/{repo}/contents/{fname}", headers=headers)
             if f_res.status_code == 200:
                 raw_content = f_res.json().get("content", "")
                 try:
-                    files[fname] = base64.b64decode(raw_content).decode("utf-8")[:4000]
+                    max_len = 3500 if fname.endswith(".md") else 1500
+                    files[fname] = base64.b64decode(raw_content).decode("utf-8", errors="ignore")[:max_len]
                 except Exception:
                     pass
+
+        # 4. Check for examples / tutorials / notebooks directories
+        example_dirs = []
+        for dname in ["examples", "tutorials", "notebooks", "demo"]:
+            d_res = await client.get(f"https://api.github.com/repos/{repo}/contents/{dname}", headers=headers)
+            if d_res.status_code == 200 and isinstance(d_res.json(), list):
+                example_dirs.append(dname)
+
+        has_examples = bool(example_dirs)
+
+        # 5. Classify Archetype & Security Recommendation
+        has_docker = "Dockerfile" in files or "docker-compose.yml" in files or "docker-compose.yaml" in files
+        is_python_lib = ("setup.py" in files or "pyproject.toml" in files or "requirements.txt" in files) and not has_docker
+        
+        repo_lower = (repo + " " + (info.get("description") or "")).lower()
+        is_dev_or_admin = any(k in repo_lower for k in [
+            "jupyter", "notebook", "admin", "dashboard", "manager", "database",
+            "terminal", "shell", "editor", "ide", "pgadmin", "redis", "mysql", "workbench"
+        ])
+
+        if is_python_lib:
+            detected_archetype = "library_framework"
+            archetype_label = "Python Library / Framework (Packaged with JupyterLab Workbench)"
+            recommended_access = "private"
+        elif is_dev_or_admin:
+            detected_archetype = "developer_admin_tool"
+            archetype_label = "Developer / Admin Tool (Requires Owner Authentication)"
+            recommended_access = "private"
+        else:
+            detected_archetype = "web_app"
+            archetype_label = "Web Application"
+            recommended_access = "public"
 
         return {
             "owner": info.get("owner", {}).get("login", ""),
@@ -47,6 +94,11 @@ async def fetch_repo_summary(repo: str, token: str = "") -> dict:
             "latest_tag": latest_tag,
             "default_branch": info.get("default_branch", "main"),
             "files": files,
+            "has_examples": has_examples,
+            "example_dirs": example_dirs,
+            "detected_archetype": detected_archetype,
+            "archetype_label": archetype_label,
+            "recommended_access": recommended_access,
         }
 
 
@@ -75,7 +127,6 @@ async def create_or_update_repo(token: str, repo_name: str, description: str, fi
         # Check if repo exists
         check = await client.get(f"https://api.github.com/repos/{user}/{repo_name}", headers=headers)
         if check.status_code == 404:
-            # Create repo
             create_payload = {
                 "name": repo_name,
                 "description": description,
@@ -95,7 +146,6 @@ async def create_or_update_repo(token: str, repo_name: str, description: str, fi
 
         # Commit files one by one (or update if exists)
         for filepath, content in files.items():
-            # Check if file exists to get sha
             f_check = await client.get(f"https://api.github.com/repos/{user}/{repo_name}/contents/{filepath}", headers=headers)
             sha = None
             if f_check.status_code == 200:
