@@ -77,6 +77,9 @@ def index(request: Request):
     return templates.TemplateResponse(request=request, name="index.html")
 
 
+ZONE_DOMAIN = os.environ.get("BOTTLE_ZONE_DOMAIN") or os.environ.get("OPENHOST_ZONE_DOMAIN") or ""
+
+
 @app.get("/api/settings")
 def get_settings():
     gh_token = get_setting("github_token", "")
@@ -88,6 +91,7 @@ def get_settings():
         "llm_api_key": f"{llm_key[:4]}...{llm_key[-4:]}" if len(llm_key) > 8 else ("configured" if llm_key else ""),
         "has_llm_key": bool(llm_key),
         "llm_model": get_setting("llm_model", "gpt-4o"),
+        "zone_domain": ZONE_DOMAIN,
     }
 
 
@@ -194,6 +198,7 @@ async def publish_app(payload: PublishPayload):
             "repo_url": target_repo_url,
             "install_command": f"openhost app install {target_repo_url}",
             "catalog_toml": catalog_toml,
+            "zone_domain": ZONE_DOMAIN,
         }
     except Exception as e:
         logger.exception("Error publishing repo")

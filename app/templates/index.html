@@ -237,16 +237,29 @@
           <div class="bg-slate-900/90 border border-bordercol rounded-xl p-5 space-y-3">
             <div class="flex items-center justify-between">
               <span class="text-xs font-semibold uppercase tracking-wider text-teal-400 flex items-center gap-1.5">
-                <i class="fa-solid fa-terminal"></i> 1-Click Install Command
+                <i class="fa-solid fa-cloud-arrow-up"></i> Deploy on Cloud in a Bottle
               </span>
-              <button onclick="copyInstallCmd()" class="text-xs text-slate-400 hover:text-white flex items-center gap-1">
-                <i class="fa-regular fa-copy"></i> Copy
-              </button>
             </div>
-            <div class="bg-black/50 rounded-lg p-3 border border-slate-800">
-              <code id="install-cmd-code" class="text-xs text-emerald-400 font-mono break-all">openhost app install ...</code>
+            <a
+              id="deploy-dashboard-btn"
+              href="#"
+              target="_blank"
+              class="w-full py-2.5 px-4 rounded-xl bg-teal-500 hover:bg-teal-400 text-darkbg font-bold text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-teal-500/20"
+            >
+              <i class="fa-solid fa-rocket"></i> Deploy via My Console (/add_app)
+            </a>
+            <div class="pt-1">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-[11px] text-slate-400 font-mono">CLI Alternative:</span>
+                <button onclick="copyInstallCmd()" class="text-[11px] text-slate-400 hover:text-white flex items-center gap-1">
+                  <i class="fa-regular fa-copy"></i> Copy
+                </button>
+              </div>
+              <div class="bg-black/50 rounded-lg p-2.5 border border-slate-800">
+                <code id="install-cmd-code" class="text-xs text-emerald-400 font-mono break-all">openhost app install ...</code>
+              </div>
+              <p class="text-[11px] text-slate-500 mt-1.5">Run via SSH on your server host.</p>
             </div>
-            <p class="text-xs text-slate-500">Run this on your Cloud in a Bottle server (<code class="text-slate-400">yuanrui.dev</code>) via SSH to install immediately.</p>
           </div>
 
           <!-- Official Catalog Submission Card -->
@@ -702,9 +715,24 @@
       }
     }
 
+    function getZoneDomain() {
+      const hostname = window.location.hostname;
+      const parts = hostname.split('.');
+      if (parts.length > 2) {
+        return parts.slice(1).join('.');
+      }
+      return hostname;
+    }
+
     function renderPublishSuccess(data) {
       document.getElementById('install-cmd-code').innerText = data.install_command;
       document.getElementById('published-repo-link').href = data.repo_url;
+
+      // Dynamic console 1-click deployment link
+      const zoneDomain = data.zone_domain || getZoneDomain();
+      const deployUrl = `https://${zoneDomain}/add_app?repo=${encodeURIComponent(data.repo_url)}`;
+      document.getElementById('deploy-dashboard-btn').href = deployUrl;
+
       document.getElementById('publish-success-card').classList.remove('hidden');
       document.getElementById('publish-success-card').scrollIntoView({ behavior: 'smooth' });
 
