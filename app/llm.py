@@ -23,7 +23,10 @@ Your task is to take an upstream open-source GitHub repository summary (README, 
    port = 8080 # Internal listening port of the container
 
    [routing]
-   public_paths = ["/"] # Routes accessible without authentication or base routing
+   # public_paths: Routes accessible without authentication.
+   # For public websites/blogs or apps with their own built-in auth (e.g. memos), use ["/"].
+   # For private developer tools, code execution environments (e.g. Jupyter, admin consoles, databases), use [] so Cloud in a Bottle enforces owner authentication.
+   public_paths = []
    health_check = "/"   # Endpoint returning 200 OK for health probe
 
    [resources]
